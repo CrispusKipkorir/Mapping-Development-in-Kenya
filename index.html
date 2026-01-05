@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HDI Kenya 2025 - University of Nairobi</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; }
+        #map { height: 100vh; width: 100%; }
+        .info { 
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            background: white; 
+            padding: 10px; 
+            border-radius: 5px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.2); 
+            z-index: 1000; 
+            max-width: 300px;
+        }
+        .legend { 
+            line-height: 18px; 
+            color: #555; 
+            background: white; 
+            padding: 10px; 
+            border-radius: 5px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.2); 
+        }
+        .legend i { 
+            width: 18px; 
+            height: 18px; 
+            float: left; 
+            margin-right: 8px; 
+            opacity: 0.7; 
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h2>HDI Kenya 2025</h2>
+        <p>University of Nairobi<br>MSc GIS - Web Mapping</p>
+        <p>Select indicator:
+            <select id="indicator">
+                <option value="HDI">Human Development Index</option>
+                <!-- Add other indicators if available -->
+            </select>
+        </p>
+    </div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([0.0236, 37.9062], 6);
+
+        // Add base map
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Function to get color based on HDI value
+        function getColor(d) {
+            return d > 0.7 ? '#006837' :
+                   d > 0.6 ? '#31a354' :
+                   d > 0.5 ? '#78c679' :
+                   d > 0.4 ? '#c2e699' :
+                   d > 0.3 ? '#ffffcc' :
+                             '#f03b20';
+        }
+
+        // Function to style each feature
+        function style(feature) {
+            // We assume the property is called 'HDI', adjust if necessary
+            const hdi = feature.properties.HDI || 0;
+            return {
+                fillColor: getColor(hdi),
+                weight: 1,
+                opacity: 1,
+                color: 'white',
+                fillOpacity: 0.7
+            };
+        }
+
+        // Load and display the GeoJSON
+        fetch('http://localhost/data/Human Development Index_filtered.geojson')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Create a Leaflet GeoJSON layer and add it to the map
+                const geojsonLayer = L.geoJSON(data, {
+                    style: style,
+                    onEachFeature: function (feature, layer) {
+                        // Bind a popup to each feature
+                        const props = feature.properties;
+                        const hdi = props.HDI || 'N/A';
+                        layer.bindPopup(`
+                            <b>${props.ADM1_EN || props.County || props.NAME || 'County'}</b><br>
+                            HDI: ${hdi}<br>
+                            ${props.ADM1_PCODE ? 'Code: ' + props.ADM1_PCODE : ''}
+                        `);
+                    }
+                }).addTo(map);
+
+                // Fit the map to the bounds of the GeoJSON
+                map.fitBounds(geojsonLayer.getBounds());
+
+                // Add legend (if needed)
+                const legend = L.control({position: 'bottomright'});
+                legend.onAdd = function (map) {
+                    const div = L.DomUtil.create('div', 'legend');
+                    const grades = [0, 0.3, 0.4, 0.5, 0.6, 0.7];
+                    const labels = ['<strong>HDI Scale</strong>'];
+                    for (let i = 0; i < grades.length; i++) {
+                        div.innerHTML +=
+                            '<i style="background:' + getColor(grades[i] + 0.05) + '"></i> ' +
+                            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+                    }
+                    div.innerHTML = labels.join('<br>') + '<br>' + div.innerHTML;
+                    return div;
+                };
+                legend.addTo(map);
+            })
+            .catch(error => {
+                console.error('Error loading the GeoJSON:', error);
+                alert('Error loading the data. See console for details.');
+            });
+    </script>
+</body>
+</html>

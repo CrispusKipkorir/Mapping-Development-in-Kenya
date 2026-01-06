@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Mapping Development in Kenya - Crispus Kipkorir</title>
+    <title>Mapping Development in Kenya </title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -19,7 +19,12 @@
         <p><strong>Crispus Kipkorir</strong><br>University of Nairobi - MSc GIS<br>Web Mapping Project</p>
         <p>Select Indicator:
             <select id="indicator" onchange="updateMap()">
-                <option value="Human Development Index_filtered.geojson">Human Development Index (HDI)</option>
+                <option value="Human Development Index.geojson">Human Development Index (HDI)</option>
+                <option value="HeadCount Ratio.geojson">Poverty Headcount Ratio (%)</option>
+                <option value="Intensity of depreviation.geojson">Intensity of Deprivation (%)</option>
+                <option value="Multi dimensional poverty.geojson">Multidimensional Poverty Index (MPI)</option>
+                <option value="Poverty Severity.geojson">Poverty Severity Index</option>
+                <option value="Vulnerability.geojson">Vulnerability to Poverty (%)</option>
             </select>
         </p>
     </div>
@@ -27,111 +32,173 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-    const map = L.map('map').setView([0.5, 37.8], 6);
+        const map = L.map('map').setView([0.5, 37.8], 6);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
 
-    let currentLayer = null;
-    let legend = null;
+        let currentLayer = null;
+        let legend = null;
 
-    // New color function matching your legend exactly
-    function getColor(hdi) {
-        if (hdi < 0.42000) return '#f03b20';      // Very Low  (red)
-        if (hdi < 0.47800) return '#fd8d3c';      // Low       (orange)
-        if (hdi < 0.53200) return '#fecc5c';      // Moderate  (light brown/yellow)
-        if (hdi < 0.58600) return '#ffffb2';      // High      (very light green/yellow)
-        return '#41ab5d';                         // Very High (dark green)
-    }
+        // Configuration for each indicator
+        const indicators = {
+            "Human Development Index.geojson": {
+                property: "HDI",
+                title: "Human Development Index (HDI)",
+                popupLabel: "HDI",
+                colorBreaks: [
+                    { max: 0.420, color: "#f03b20", label: "Very Low" },
+                    { max: 0.478, color: "#fd8d3c", label: "Low" },
+                    { max: 0.532, color: "#fecc5c", label: "Moderate" },
+                    { max: 0.586, color: "#ffffb2", label: "High" },
+                    { max: Infinity, color: "#41ab5d", label: "Very High" }
+                ],
+                ranges: ["< 0.420", "0.420 – 0.478", "0.478 – 0.532", "0.532 – 0.586", "≥ 0.586"]
+            },
+            "HeadCount Ratio.geojson": {
+                property: "HeadCount",
+                title: "Poverty Headcount Ratio (%)",
+                popupLabel: "Headcount Ratio (%)",
+                colorBreaks: [ // Higher = worse (red)
+                    { max: 20, color: "#41ab5d", label: "Very Low" },
+                    { max: 30, color: "#a1d99b", label: "Low" },
+                    { max: 40, color: "#ffffb2", label: "Moderate" },
+                    { max: 50, color: "#fd8d3c", label: "High" },
+                    { max: Infinity, color: "#f03b20", label: "Very High" }
+                ],
+                ranges: ["< 20", "20 – 30", "30 – 40", "40 – 50", "≥ 50"]
+            },
+            "Intensity of depreviation.geojson": {
+                property: "Intensity",
+                title: "Intensity of Deprivation (%)",
+                popupLabel: "Intensity (%)",
+                colorBreaks: [ // Higher = worse
+                    { max: 35, color: "#41ab5d", label: "Very Low" },
+                    { max: 40, color: "#a1d99b", label: "Low" },
+                    { max: 45, color: "#ffffb2", label: "Moderate" },
+                    { max: 50, color: "#fd8d3c", label: "High" },
+                    { max: Infinity, color: "#f03b20", label: "Very High" }
+                ],
+                ranges: ["< 35", "35 – 40", "40 – 45", "45 – 50", "≥ 50"]
+            },
+            "Multi dimensional poverty.geojson": {
+                property: "MPI",
+                title: "Multidimensional Poverty Index (MPI)",
+                popupLabel: "MPI",
+                colorBreaks: [ // Higher = worse
+                    { max: 0.10, color: "#41ab5d", label: "Very Low" },
+                    { max: 0.15, color: "#a1d99b", label: "Low" },
+                    { max: 0.20, color: "#ffffb2", label: "Moderate" },
+                    { max: 0.25, color: "#fd8d3c", label: "High" },
+                    { max: Infinity, color: "#f03b20", label: "Very High" }
+                ],
+                ranges: ["< 0.10", "0.10 – 0.15", "0.15 – 0.20", "0.20 – 0.25", "≥ 0.25"]
+            },
+            "Poverty Severity.geojson": {
+                property: "Severity",
+                title: "Poverty Severity Index",
+                popupLabel: "Severity",
+                colorBreaks: [ // Higher = worse
+                    { max: 0.05, color: "#41ab5d", label: "Very Low" },
+                    { max: 0.10, color: "#a1d99b", label: "Low" },
+                    { max: 0.15, color: "#ffffb2", label: "Moderate" },
+                    { max: 0.20, color: "#fd8d3c", label: "High" },
+                    { max: Infinity, color: "#f03b20", label: "Very High" }
+                ],
+                ranges: ["< 0.05", "0.05 – 0.10", "0.10 – 0.15", "0.15 – 0.20", "≥ 0.20"]
+            },
+            "Vulnerability.geojson": {
+                property: "Vulnerabl",
+                title: "Vulnerability to Poverty (%)",
+                popupLabel: "Vulnerability (%)",
+                colorBreaks: [ // Higher = worse
+                    { max: 10, color: "#41ab5d", label: "Very Low" },
+                    { max: 20, color: "#a1d99b", label: "Low" },
+                    { max: 30, color: "#ffffb2", label: "Moderate" },
+                    { max: 40, color: "#fd8d3c", label: "High" },
+                    { max: Infinity, color: "#f03b20", label: "Very High" }
+                ],
+                ranges: ["< 10", "10 – 20", "20 – 30", "30 – 40", "≥ 40"]
+            }
+        };
 
-    // Legend labels matching your image
-    function getCategory(hdi) {
-        if (hdi < 0.42000) return 'Very Low';
-        if (hdi < 0.47800) return 'Low';
-        if (hdi < 0.53200) return 'Moderate';
-        if (hdi < 0.58600) return 'High';
-        return 'Very High';
-    }
+        function getColor(value, breaks) {
+            for (let b of breaks) {
+                if (value < b.max) return b.color;
+            }
+            return breaks[breaks.length - 1].color;
+        }
 
-    function updateMap() {
-        const file = document.getElementById('indicator').value;
+        function getCategory(value, breaks) {
+            for (let b of breaks) {
+                if (value < b.max) return b.label;
+            }
+            return breaks[breaks.length - 1].label;
+        }
 
-        if (currentLayer) map.removeLayer(currentLayer);
-        if (legend) map.removeControl(legend);
+        function updateMap() {
+            const file = document.getElementById('indicator').value;
+            const config = indicators[file];
 
-        fetch(file)
-            .then(r => {
-                if (!r.ok) throw new Error('File not loaded');
-                return r.json();
-            })
-            .then(data => {
-                currentLayer = L.geoJSON(data, {
-                    style: feature => ({
-                        fillColor: getColor(feature.properties.HDI || 0),
-                        weight: 1.5,
-                        opacity: 1,
-                        color: 'white',
-                        fillOpacity: 0.7
-                    }),
-                    onEachFeature: (feature, layer) => {
-                        const p = feature.properties;
-                        const county = p.adm1_name || p.NAME || p.County || 'Unknown';
-                        const hdi = p.HDI ? p.HDI.toFixed(3) : 'N/A';
-                        const category = p.HDI ? getCategory(p.HDI) : '';
-                        layer.bindPopup(
-                            `<strong>${county.charAt(0).toUpperCase() + county.slice(1)} County</strong><br>` +
-                            `HDI: ${hdi}<br>` +
-                            `Category: ${category}`
-                        );
-                    }
-                }).addTo(map);
+            if (currentLayer) map.removeLayer(currentLayer);
+            if (legend) map.removeControl(legend);
 
-                map.fitBounds(currentLayer.getBounds());
+            fetch(file)
+                .then(r => {
+                    if (!r.ok) throw new Error('File not loaded');
+                    return r.json();
+                })
+                .then(data => {
+                    currentLayer = L.geoJSON(data, {
+                        style: feature => ({
+                            fillColor: getColor(feature.properties[config.property] || 0, config.colorBreaks),
+                            weight: 1.5,
+                            opacity: 1,
+                            color: 'white',
+                            fillOpacity: 0.7
+                        }),
+                        onEachFeature: (feature, layer) => {
+                            const p = feature.properties;
+                            const county = p.County || p.NAME_1 || p.adm1_name || 'Unknown';
+                            const value = p[config.property] ? p[config.property].toFixed(3) : 'N/A';
+                            const category = p[config.property] !== undefined ? getCategory(p[config.property], config.colorBreaks) : '';
+                            layer.bindPopup(
+                                `<strong>${county.charAt(0).toUpperCase() + county.slice(1)} County</strong><br>` +
+                                `${config.popupLabel}: ${value}<br>` +
+                                `Category: ${category}`
+                            );
+                        }
+                    }).addTo(map);
 
-                // Create legend matching your screenshot
-                legend = L.control({ position: 'bottomright' });
+                    map.fitBounds(currentLayer.getBounds());
 
-                legend.onAdd = () => {
-                    const div = L.DomUtil.create('div', 'legend');
-                    div.style.background = 'white';
-                    div.style.padding = '10px';
-                    div.style.borderRadius = '5px';
-                    div.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
-                    div.style.lineHeight = '18px';
-                    div.style.color = '#555';
+                    // Legend
+                    legend = L.control({ position: 'bottomright' });
+                    legend.onAdd = () => {
+                        const div = L.DomUtil.create('div', 'legend');
+                        div.style.background = 'white';
+                        div.style.padding = '10px';
+                        div.style.borderRadius = '5px';
+                        div.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
+                        div.style.lineHeight = '22px';
 
-                    const grades = [
-                        { max: 0.42000, label: 'Very Low', color: '#f03b20' },
-                        { max: 0.47800, label: 'Low', color: '#fd8d3c' },
-                        { max: 0.53200, label: 'Moderate', color: '#fecc5c' },
-                        { max: 0.58600, label: 'High', color: '#ffffb2' },
-                        { max: Infinity, label: 'Very High', color: '#41ab5d' }
-                    ];
+                        div.innerHTML = `<strong>${config.title}</strong><br>`;
 
-                    div.innerHTML = '<strong>Legend</strong><br>';
+                        config.colorBreaks.forEach((b, i) => {
+                            div.innerHTML +=
+                                `<i style="background:${b.color}; width:18px; height:18px; float:left; margin-right:8px; opacity:0.7;"></i>` +
+                                `${config.ranges[i]}<br><strong style="margin-left:26px;">${b.label}</strong><br><br>`;
+                        });
 
-                    grades.forEach(g => {
-                        let range;
-                        if (g.max === 0.42000) range = '0.37000 – 0.42000';
-                        else if (g.max === 0.47800) range = '0.42000 – 0.47800';
-                        else if (g.max === 0.53200) range = '0.47800 – 0.53200';
-                        else if (g.max === 0.58600) range = '0.53200 – 0.58600';
-                        else range = '0.58600 – 0.64000';
+                        return div;
+                    };
+                    legend.addTo(map);
+                })
+                .catch(err => alert('Data load error: ' + err + '\nCheck console and file paths.'));
+        }
 
-                        div.innerHTML +=
-                            `<i style="background:${g.color}; width:18px; height:18px; float:left; margin-right:8px; opacity:0.7;"></i>` +
-                            `${range}<br><strong style="margin-left:26px;">${g.label}</strong><br><br>`;
-                    });
-
-                    return div;
-                };
-
-                legend.addTo(map);
-            })
-            .catch(err => alert('Data load error: ' + err + '\nCheck if GeoJSON file is complete and valid.'));
-    }
-
-    updateMap();
-</script>
-
+        updateMap();
+    </script>
+</body>
+</html>

@@ -2,26 +2,200 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Mapping Development in Kenya - Crispus Kipkorir</title>
+    <title>Mapping Development in Kenya</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
-        body { margin: 0; padding: 0; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
         #map { height: 100vh; width: 100%; }
-        .info { position: absolute; top: 10px; left: 10px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.3); z-index: 1000; max-width: 400px; font-family: Arial, sans-serif; }
-        .legend { background: white; padding: 10px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2); line-height: 22px; color: #555; }
-        .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.7; }
-        #year-slider { width: 300px; margin: 15px 0; }
-        #year-label { font-weight: bold; font-size: 1.2em; margin-right: 10px; }
-        #data-note { font-size: 0.9em; color: #666; margin-top: 10px; }
+
+        /* Title centered at top */
+        .title {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            font-size: 1.4em;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        /* Author */
+        .author {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-size: 0.9em;
+        }
+
+        /* Controls panel  */
+        .control-panel {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            width: 340px;
+            overflow: hidden;
+            transition: width 0.3s ease;
+        }
+        .control-header {
+            background: #f0f0f0;
+            padding: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .control-content { padding: 15px; }
+        .collapsed .control-content { display: none; }
+        .collapsed { width: 50px; }
+
+        /* Year slider */
+        #year-slider { width: 100%; margin: 15px 0; }
+        .slider-ticks {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        /* Legend panel - collapsed */
+        .legend-panel {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            width: 300px;
+            margin-top: 10px;
+        }
+        .legend-header {
+            background: #f0f0f0;
+            padding: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .legend-content {
+            padding: 10px;
+            line-height: 22px;
+            color: #555;
+        }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+
+        /* Data sources - bottom right, collapsed */
+        .sources-panel {
+            position: absolute;
+            bottom: 50px;
+            right: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            width: 320px;
+        }
+        .sources-header {
+            background: #f0f0f0;
+            padding: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sources-content {
+            padding: 12px;
+            font-size: 0.9em;
+            color: #444;
+        }
+        .sources-collapsed .sources-content { display: none; }
+
+        /* County comparison tool - bottom center */
+        .comparison-panel {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            text-align: center;
+            font-size: 0.95em;
+            max-width: 500px;
+        }
+        #compare-btn {
+            padding: 8px 16px;
+            background: #0078e7;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        #compare-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #clear-compare {
+            padding: 8px 16px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            display: none;
+        }
+        #selected-counties {
+            margin-top: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .hidden { display: none; }
     </style>
 </head>
 <body>
-    <div class="info">
-        <h2>Mapping Development in Kenya</h2>
-        <p><strong>Crispus Kipkorir</strong><br>University of Nairobi - MSc GIS<br>Web Mapping Project</p>
-        <p>Select Indicator:
-            <select id="indicator" onchange="updateMap()">
+    <div class="title">Mapping Development in Kenya</div>
+    <div class="author">Crispus Kipkorir</div>
+
+    <!-- Controls Panel -->
+    <div class="control-panel" id="controlPanel">
+        <div class="control-header" onclick="togglePanel('controlPanel')">
+            <span>Controls</span>
+            <i class="fas fa-chevron-left" id="controlIcon"></i>
+        </div>
+        <div class="control-content">
+            <strong>Select Indicator:</strong><br>
+            <select id="indicator" onchange="updateMap()" style="width:100%; padding:8px; margin-top:8px;">
                 <option value="Human Development Index.geojson">Human Development Index (HDI)</option>
                 <option value="HeadCount Ratio.geojson">Poverty Headcount Ratio (%)</option>
                 <option value="Intensity of depreviation.geojson">Intensity of Deprivation (%)</option>
@@ -29,29 +203,77 @@
                 <option value="Poverty Severity.geojson">Poverty Severity (% in Severe Poverty)</option>
                 <option value="Vulnerability.geojson">Vulnerability to Poverty (%)</option>
             </select>
-        </p>
-        <p>
-            <label id="year-label">Year: 2025</label>
-            <input type="range" id="year-slider" min="2015" max="2030" value="2025" step="5" oninput="updateMap()">
-        </p>
-        <div id="national-info"><strong>National Value (2025):</strong> Loading...</div>
-        <div id="data-note">County-level data available only for recent period (~2025). For other years, national Kenya value is shown.</div>
+
+            <div style="margin-top:20px;">
+                <strong>Year:</strong> <span id="year-label">2025</span>
+                <input type="range" id="year-slider" min="2015" max="2030" value="2025" step="5" oninput="updateMap()">
+                <div class="slider-ticks">
+                    <span>2015</span>
+                    <span>2020</span>
+                    <span>2025</span>
+                    <span>2030</span>
+                </div>
+            </div>
+
+            <div id="national-info" style="margin-top:15px; font-weight:bold;"></div>
+            <div style="margin-top:10px; font-size:0.9em; color:#666;">
+                County-level data available only for recent period (~2025).<br>
+                For other years, national Kenya value is shown.
+            </div>
+        </div>
     </div>
+
+    <!-- Legend Panel -->
+    <div class="legend-panel hidden" id="legendPanel">
+        <div class="legend-header" onclick="togglePanel('legendPanel')">
+            <span>Legend</span>
+            <i class="fas fa-chevron-down" id="legendIcon"></i>
+        </div>
+        <div class="legend-content" id="legendContent"></div>
+    </div>
+
+    <!-- Data Sources -->
+    <div class="sources-panel sources-collapsed" id="sourcesPanel">
+        <div class="sources-header" onclick="togglePanel('sourcesPanel')">
+            <span>Data Sources</span>
+            <i class="fas fa-chevron-up"></i>
+        </div>
+        <div class="sources-content">
+            <strong>County-level data (~2025):</strong><br>
+            • Kenya National Bureau of Statistics (KNBS)<br>
+            • Oxford Poverty and Human Development Initiative (OPHI)<br>
+            • UNDP Human Development Report<br><br>
+            <strong>National trends:</strong><br>
+            • UNDP Human Development Reports (2015–2023)<br>
+            • KNBS Economic Surveys & Poverty Reports<br>
+            • World Bank Kenya Poverty Assessments
+        </div>
+    </div>
+
+    <!-- County Comparison Tool -->
+    <div class="comparison-panel">
+        <div>Click counties on the map to select up to two for comparison (only available in 2025 view).</div>
+        <button id="compare-btn" disabled>Start Side-by-Side Comparison</button>
+        <button id="clear-compare">Clear Selection</button>
+        <div id="selected-counties">No counties selected</div>
+    </div>
+
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-side-by-side@2.2.0/leaflet-side-by-side.min.js"></script>
     <script>
         const map = L.map('map').setView([0.5, 37.8], 6);
-
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
         let currentLayer = null;
-        let legend = null;
         let messageOverlay = null;
+        let sideBySideControl = null;
+        let selectedFeatures = [];
 
-        // Updated accurate national values based on official sources (UNDP, KNBS, OPHI 2022-2024)
+        // National values (updated with latest available data as of 2026)
         const nationalData = {
             "Human Development Index.geojson": { 
                 2015: "0.555", 
@@ -68,7 +290,7 @@
             "Intensity of depreviation.geojson": { 
                 2015: "~45%", 
                 2020: "~48%", 
-                2025: "~50% (est. from recent)", 
+                2025: "~50%", 
                 2030: "Target reduction" 
             },
             "Multi dimensional poverty.geojson": { 
@@ -80,18 +302,18 @@
             "Poverty Severity.geojson": { 
                 2015: "~10%", 
                 2020: "~15%", 
-                2025: "~12% (2022 est.)", 
+                2025: "~12%", 
                 2030: "Target low" 
             },
             "Vulnerability.geojson": { 
                 2015: "~25%", 
                 2020: "~30%", 
-                2025: "~28% (recent est.)", 
+                2025: "~28%", 
                 2030: "Target <20%" 
             }
         };
 
-        // Indicator configurations (same as previous version – copy full from earlier code)
+        // Full indicator configurations
         const indicators = {
             "Human Development Index.geojson": {
                 property: "HDI",
@@ -193,24 +415,76 @@
             return breaks[breaks.length - 1].label;
         }
 
+        function togglePanel(panelId) {
+            const panel = document.getElementById(panelId);
+            panel.classList.toggle('collapsed');
+            if (panelId === 'sourcesPanel') panel.classList.toggle('sources-collapsed');
+        }
+
+        function updateComparisonUI() {
+            const btn = document.getElementById('compare-btn');
+            const clearBtn = document.getElementById('clear-compare');
+            const label = document.getElementById('selected-counties');
+
+            if (selectedFeatures.length === 0) {
+                label.textContent = 'No counties selected';
+                btn.disabled = true;
+                clearBtn.style.display = 'none';
+            } else if (selectedFeatures.length === 1) {
+                const county = selectedFeatures[0].properties[indicators[document.getElementById('indicator').value].countyProp];
+                label.textContent = `Selected: ${county}`;
+                btn.disabled = true;
+                clearBtn.style.display = 'inline-block';
+            } else {
+                const c1 = selectedFeatures[0].properties[indicators[document.getElementById('indicator').value].countyProp];
+                const c2 = selectedFeatures[1].properties[indicators[document.getElementById('indicator').value].countyProp];
+                label.textContent = `Selected: ${c1} vs ${c2}`;
+                btn.disabled = false;
+                clearBtn.style.display = 'inline-block';
+            }
+        }
+
+        function clearComparison() {
+            selectedFeatures = [];
+            if (sideBySideControl) {
+                map.removeControl(sideBySideControl);
+                sideBySideControl = null;
+            }
+            if (currentLayer) currentLayer.eachLayer(l => l.setStyle({weight: 1.5, color: 'white'}));
+            updateComparisonUI();
+        }
+
+        document.getElementById('clear-compare').onclick = clearComparison;
+
+        document.getElementById('compare-btn').onclick = () => {
+            if (selectedFeatures.length !== 2) return;
+            const config = indicators[document.getElementById('indicator').value];
+            const layer1 = L.geoJSON(selectedFeatures[0], {style: {fillColor: getColor(selectedFeatures[0].properties[config.property], config.colorBreaks), weight: 3, color: '#000', fillOpacity: 0.8}});
+            const layer2 = L.geoJSON(selectedFeatures[1], {style: {fillColor: getColor(selectedFeatures[1].properties[config.property], config.colorBreaks), weight: 3, color: '#000', fillOpacity: 0.8}});
+            if (sideBySideControl) map.removeControl(sideBySideControl);
+            sideBySideControl = L.control.sideBySide(layer1, layer2).addTo(map);
+        };
+
         function updateMap() {
             const file = document.getElementById('indicator').value;
             const config = indicators[file];
-            const year = document.getElementById('year-slider').value;
-            document.getElementById('year-label').textContent = 'Year: ' + year;
+            const year = parseInt(document.getElementById('year-slider').value);
+            document.getElementById('year-label').textContent = year;
 
-            // Update national info always
             document.getElementById('national-info').innerHTML = `<strong>National Kenya (${year}):</strong> ${nationalData[file][year]}`;
 
             if (currentLayer) map.removeLayer(currentLayer);
-            if (legend) map.removeControl(legend);
             if (messageOverlay) map.removeLayer(messageOverlay);
+            if (sideBySideControl) map.removeControl(sideBySideControl);
+            sideBySideControl = null;
+            document.getElementById('legendPanel').classList.add('hidden');
+            document.getElementById('legendContent').innerHTML = '';
+            clearComparison();
 
-            if (year === "2025") {
-                // Show full county map for current data
-                const rawUrl = "https://raw.githubusercontent.com/CrispusKipkorir/Mapping-Development-in-Kenya/main/" + file;
+            if (year === 2025) {
+                const rawUrl = "https://raw.githubusercontent.com/CrispusKipkorir/Mapping-Development-in-Kenya/main/" + encodeURIComponent(file);
                 fetch(rawUrl)
-                    .then(r => { if (!r.ok) throw new Error('File not loaded'); return r.json(); })
+                    .then(r => { if (!r.ok) throw new Error('File not found'); return r.json(); })
                     .then(data => {
                         currentLayer = L.geoJSON(data, {
                             style: feature => ({
@@ -222,61 +496,55 @@
                             }),
                             onEachFeature: (feature, layer) => {
                                 const p = feature.properties;
-                                const county = p[config.countyProp] || p.Counties || 'Unknown';
-                                const value = p[config.property] !== undefined ? Number(p[config.property]).toFixed(3) : 'N/A';
-                                const category = p[config.property] !== undefined ? getCategory(p[config.property], config.colorBreaks) : '';
-                                layer.bindPopup(
-                                    `<strong>${county.charAt(0).toUpperCase() + county.slice(1)} County</strong><br>` +
-                                    `${config.popupLabel}: ${value}<br>Category: ${category}`
-                                );
+                                const county = p[config.countyProp] || 'Unknown';
+                                const val = p[config.property] !== undefined ? Number(p[config.property]).toFixed(3) : 'N/A';
+                                const cat = p[config.property] !== undefined ? getCategory(p[config.property], config.colorBreaks) : '';
+                                layer.bindPopup(`<strong>${county}</strong><br>${config.popupLabel}: ${val}<br>Category: ${cat}`);
+
+                                layer.on('click', () => {
+                                    if (selectedFeatures.includes(feature)) {
+                                        selectedFeatures = selectedFeatures.filter(f => f !== feature);
+                                        layer.setStyle({weight: 1.5, color: 'white'});
+                                    } else {
+                                        if (selectedFeatures.length >= 2) {
+                                            alert('Maximum 2 counties. Click "Clear Selection" first.');
+                                            return;
+                                        }
+                                        selectedFeatures.push(feature);
+                                        layer.setStyle({weight: 4, color: '#ff7800', fillOpacity: 0.9});
+                                    }
+                                    updateComparisonUI();
+                                });
                             }
                         }).addTo(map);
+
                         map.fitBounds(currentLayer.getBounds());
 
-                        // Legend
-                        legend = L.control({ position: 'bottomright' });
-                        legend.onAdd = () => {
-                            const div = L.DomUtil.create('div', 'legend');
-                            div.style.background = 'white';
-                            div.style.padding = '10px';
-                            div.style.borderRadius = '5px';
-                            div.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
-                            div.style.lineHeight = '22px';
-                            div.innerHTML = `<strong>${config.title}</strong><br>`;
-                            config.colorBreaks.forEach((b, i) => {
-                                div.innerHTML +=
-                                    `<i style="background:${b.color}; width:18px; height:18px; float:left; margin-right:8px; opacity:0.7;"></i>` +
-                                    `${config.ranges[i]}<br><strong style="margin-left:26px;">${b.label}</strong><br><br>`;
-                            });
-                            return div;
-                        };
-                        legend.addTo(map);
+                        // Show legend
+                        document.getElementById('legendPanel').classList.remove('hidden');
+                        const content = document.getElementById('legendContent');
+                        content.innerHTML = `<strong>${config.title}</strong><br><br>`;
+                        config.colorBreaks.forEach((b, i) => {
+                            content.innerHTML += `<i style="background:${b.color}"></i>${config.ranges[i]}<br><strong style="margin-left:26px;">${b.label}</strong><br><br>`;
+                        });
                     })
-                    .catch(err => alert('Data load error: ' + err));
+                    .catch(err => alert('Error loading data: ' + err));
             } else {
-                // For other years: show message overlay
-                messageOverlay = L.rectangle(map.getBounds(), {
-                    color: "#ffffff",
-                    weight: 0,
-                    fillOpacity: 0.85
-                }).addTo(map);
+                messageOverlay = L.rectangle(map.getBounds(), {color: "#fff", weight: 0, fillOpacity: 0.85}).addTo(map);
                 currentLayer = messageOverlay;
 
-                const center = map.getCenter();
-                const message = L.marker(center, {
-                    opacity: 0
-                }).addTo(map).bindPopup(
-                    `<div style="text-align:center; font-size:1.1em; padding:20px;">
+                L.marker(map.getCenter(), {opacity: 0}).addTo(map).bindPopup(
+                    `<div style="text-align:center; padding:20px; font-size:1.1em;">
                         <strong>No county-level data available for ${year}</strong><br><br>
-                        County disaggregation is only available for the most recent data (~2025).<br><br>
-                        <strong>National Kenya value (${year}):</strong><br>
-                        ${nationalData[file][year]}
+                        County disaggregation only available for recent data (~2025).<br><br>
+                        <strong>National Kenya value (${year}):</strong><br>${nationalData[file][year]}
                     </div>`,
-                    { permanent: true, autoClose: false, closeOnEscapeKey: false, closeButton: false }
+                    {permanent: true, closeButton: false, autoClose: false}
                 ).openPopup();
             }
         }
 
+        // Initial load
         updateMap();
     </script>
 </body>

@@ -37,9 +37,10 @@
             font-size: 0.9em;
         }
 
+        /* Controls Panel - moved to avoid zoom buttons */
         .control-panel {
             position: absolute;
-            top: 60px;
+            top: 100px; /* Below Leaflet zoom controls */
             left: 10px;
             background: white;
             border-radius: 8px;
@@ -71,7 +72,7 @@
             color: #555;
         }
 
-        /* Legend moved to upper right */
+        /* Legend - Upper Right, fixed colors */
         .legend-panel {
             position: absolute;
             top: 60px;
@@ -80,7 +81,7 @@
             border-radius: 8px;
             box-shadow: 0 0 15px rgba(0,0,0,0.3);
             z-index: 1000;
-            width: 280px;
+            width: 300px;
             overflow: hidden;
             transition: width 0.3s ease;
         }
@@ -94,22 +95,38 @@
             align-items: center;
         }
         .legend-content {
-            padding: 12px;
-            line-height: 24px;
+            padding: 15px;
+            line-height: 28px;
             font-size: 0.95em;
         }
-        .legend i {
-            width: 20px;
-            height: 20px;
-            float: left;
-            margin-right: 10px;
-            opacity: 0.8;
-            border: 1px solid #ddd;
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border: 1px solid #aaa;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .legend-text {
+            flex: 1;
+        }
+        .legend-range {
+            font-size: 0.9em;
+            color: #555;
+        }
+        .legend-label {
+            font-weight: bold;
+            margin-top: 4px;
         }
 
+        /* Data Sources - moved lower to avoid overlap */
         .sources-panel {
             position: absolute;
-            bottom: 50px;
+            bottom: 120px; /* Higher than comparison tool */
             right: 10px;
             background: white;
             border-radius: 8px;
@@ -133,7 +150,7 @@
         }
         .sources-collapsed .sources-content { display: none; }
 
-        /* County Comparison Tool - collapsible, bottom center */
+        /* County Comparison Tool - Draggable & Collapsible */
         .comparison-panel {
             position: absolute;
             bottom: 50px;
@@ -144,18 +161,20 @@
             box-shadow: 0 0 15px rgba(0,0,0,0.3);
             z-index: 1000;
             width: 420px;
-            overflow: hidden;
-            transition: height 0.3s ease;
+            cursor: move;
+            user-select: none;
         }
         .comparison-header {
             background: #f0f0f0;
             padding: 10px;
-            cursor: pointer;
+            cursor: move;
             font-weight: bold;
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-size: 0.95em;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
         }
         .comparison-content {
             padding: 12px;
@@ -171,10 +190,7 @@
             cursor: pointer;
             font-size: 0.9em;
         }
-        #compare-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
+        #compare-btn:disabled { background: #ccc; cursor: not-allowed; }
         #clear-compare {
             padding: 7px 14px;
             background: #e74c3c;
@@ -193,26 +209,28 @@
         }
         #comparison-values {
             margin-top: 8px;
-            padding: 8px;
+            padding: 10px;
             background: #f8f8f8;
             border-radius: 4px;
             font-size: 0.92em;
+            line-height: 1.5;
         }
 
-        .hidden { display: none; }
         .comparison-collapsed .comparison-content { display: none; }
         .comparison-collapsed { height: 42px; }
+
+        .hidden { display: none; }
     </style>
 </head>
 <body>
     <div class="title">Mapping Development in Kenya</div>
-    <div class="author"> Author:Crispus Kipkorir</div>
+    <div class="author">Crispus Kipkorir</div>
 
     <!-- Controls Panel -->
     <div class="control-panel" id="controlPanel">
         <div class="control-header" onclick="togglePanel('controlPanel')">
             <span>Controls</span>
-            <i class="fas fa-chevron-left" id="controlIcon"></i>
+            <i class="fas fa-chevron-left"></i>
         </div>
         <div class="control-content">
             <strong>Select Indicator:</strong><br>
@@ -244,7 +262,7 @@
         </div>
     </div>
 
-    <!-- Legend Panel - Upper Right -->
+    <!-- Legend Panel - Upper Right with proper colored boxes -->
     <div class="legend-panel hidden" id="legendPanel">
         <div class="legend-header" onclick="togglePanel('legendPanel')">
             <span>Legend</span>
@@ -253,7 +271,7 @@
         <div class="legend-content" id="legendContent"></div>
     </div>
 
-    <!-- Data Sources -->
+    <!-- Data Sources - Raised to avoid overlap -->
     <div class="sources-panel sources-collapsed" id="sourcesPanel">
         <div class="sources-header" onclick="togglePanel('sourcesPanel')">
             <span>Data Sources</span>
@@ -271,9 +289,9 @@
         </div>
     </div>
 
-    <!-- County Comparison Tool - Collapsible -->
+    <!-- Draggable & Collapsible County Comparison Tool -->
     <div class="comparison-panel" id="comparisonPanel">
-        <div class="comparison-header" onclick="togglePanel('comparisonPanel')">
+        <div class="comparison-header" id="comparisonDragHandle">
             <span>County Comparison Tool</span>
             <i class="fas fa-chevron-down"></i>
         </div>
@@ -418,6 +436,41 @@
             if (panelId === 'comparisonPanel') panel.classList.toggle('comparison-collapsed');
         }
 
+        // Make comparison panel draggable
+        const comparisonPanel = document.getElementById('comparisonPanel');
+        const dragHandle = document.getElementById('comparisonDragHandle');
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+
+        dragHandle.addEventListener('mousedown', (e) => {
+            initialX = e.clientX - currentX;
+            initialY = e.clientY - currentY;
+            isDragging = true;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+                comparisonPanel.style.left = 'unset';
+                comparisonPanel.style.transform = 'none';
+                comparisonPanel.style.top = currentY + 'px';
+                comparisonPanel.style.left = currentX + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Initialize position
+        currentX = window.innerWidth / 2;
+        currentY = window.innerHeight - 100;
+
         function updateComparisonUI() {
             const config = indicators[document.getElementById('indicator').value];
             const btn = document.getElementById('compare-btn');
@@ -531,13 +584,20 @@
 
                         map.fitBounds(currentLayer.getBounds());
 
-                        // Show legend with proper colors
+                        // Show legend with colored squares
                         document.getElementById('legendPanel').classList.remove('hidden');
                         const content = document.getElementById('legendContent');
                         content.innerHTML = `<strong>${config.title}</strong><br><br>`;
                         config.colorBreaks.forEach((b, i) => {
-                            content.innerHTML += 
-                                `<i style="background:${b.color}"></i> ${config.ranges[i]}<br><strong style="margin-left:30px;">${b.label}</strong><br><br>`;
+                            content.innerHTML += `
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background:${b.color}"></div>
+                                    <div class="legend-text">
+                                        <div class="legend-range">${config.ranges[i]}</div>
+                                        <div class="legend-label">${b.label}</div>
+                                    </div>
+                                </div>
+                            `;
                         });
                     })
                     .catch(err => alert('Error loading data'));

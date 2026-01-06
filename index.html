@@ -125,7 +125,7 @@
         /* Data Sources panel – placed directly below the legend */
         .sources-panel {
             position: absolute;
-            top: 300px;
+            top: 350px;
             right: 10px;
             background: white;
             border-radius: 8px;
@@ -225,7 +225,7 @@
             box-shadow: 0 0 15px rgba(0,0,0,0.3);
             z-index: 1000;
             width: 80%;
-            max-width: 900px;
+            max-width: 800px;
             max-height: 40vh;
             overflow-y: auto;
             padding: 15px;
@@ -600,28 +600,43 @@
             const panels = document.querySelectorAll('.control-panel, .legend-panel, .sources-panel, .comparison-panel, .about-panel, .title, .author');
             panels.forEach(p => p.style.visibility = 'hidden');
 
-            html2canvas(document.getElementById('map'), {useCORS: true, allowTaint: true, backgroundColor: '#ffffff'}).then(canvas => {
-                const imgData = canvas.toDataURL(choice === '2' ? 'image/jpeg' : 'image/png');
+html2canvas(document.getElementById('map'), {
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#ffffff'
+}).then(canvas => {
+    let imgType, fileExt;
+    if (choice === '2') { // JPG
+        imgType = 'image/jpeg';
+        fileExt = 'jpg';
+    } else { // PNG
+        imgType = 'image/png';
+        fileExt = 'png';
+    }
 
-                if (choice === '3') { // PDF
-                    const { jsPDF } = window.jspdf;
-                    const pdf = new jsPDF({
-                        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-                        unit: 'px',
-                        format: [canvas.width, canvas.height]
-                    });
-                    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-                    pdf.save('kenya-development-map.pdf');
-                } else { // PNG or JPG
-                    const link = document.createElement('a');
-                    link.download = `kenya-development-map.${choice === '2' ? 'jpg' : 'png'}`;
-                    link.href = imgData;
-                    link.click();
-                }
+    const imgData = canvas.toDataURL(imgType);
 
-                // Show panels again
-                panels.forEach(p => p.style.visibility = 'visible');
-            });
+    if (choice === '3') { // PDF
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
+        });
+        // Use correct format here
+        pdf.addImage(imgData, fileExt.toUpperCase(), 0, 0, canvas.width, canvas.height);
+        pdf.save(`kenya-development-map.pdf`);
+    } else { // PNG or JPG
+        const link = document.createElement('a');
+        link.download = `kenya-development-map.${fileExt}`;
+        link.href = imgData;
+        link.click();
+    }
+
+    panels.forEach(p => p.style.visibility = 'visible');
+});
+
+                
         };
 
         // Main function that loads data and updates the map
@@ -719,3 +734,4 @@
     </script>
 </body>
 </html>
+

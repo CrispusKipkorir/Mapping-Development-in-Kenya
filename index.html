@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Mapping Development in Kenya </title>
+    <title>Mapping Development in Kenya - Crispus Kipkorir</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; }
         #map { height: 100vh; width: 100%; }
         .info { position: absolute; top: 10px; left: 10px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.3); z-index: 1000; max-width: 350px; font-family: Arial, sans-serif; }
-        .legend { background: white; padding: 10px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2); line-height: 18px; color: #555; }
+        .legend { background: white; padding: 10px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2); line-height: 22px; color: #555; }
         .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.7; }
     </style>
 </head>
@@ -23,7 +23,7 @@
                 <option value="HeadCount Ratio.geojson">Poverty Headcount Ratio (%)</option>
                 <option value="Intensity of depreviation.geojson">Intensity of Deprivation (%)</option>
                 <option value="Multi dimensional poverty.geojson">Multidimensional Poverty Index (MPI)</option>
-                <option value="Poverty Severity.geojson">Poverty Severity Index</option>
+                <option value="Poverty Severity.geojson">Poverty Severity (% in Severe Poverty)</option>
                 <option value="Vulnerability.geojson">Vulnerability to Poverty (%)</option>
             </select>
         </p>
@@ -41,10 +41,11 @@
         let currentLayer = null;
         let legend = null;
 
-        // Configuration for each indicator
+        // Configuration for each indicator – now using exact classifications from your ArcGIS screenshots
         const indicators = {
             "Human Development Index.geojson": {
                 property: "HDI",
+                countyProp: "adm1_name",
                 title: "Human Development Index (HDI)",
                 popupLabel: "HDI",
                 colorBreaks: [
@@ -57,69 +58,74 @@
                 ranges: ["< 0.420", "0.420 – 0.478", "0.478 – 0.532", "0.532 – 0.586", "≥ 0.586"]
             },
             "HeadCount Ratio.geojson": {
-                property: "HeadCount",
+                property: "Headcount",
+                countyProp: "adm1_name",
                 title: "Poverty Headcount Ratio (%)",
                 popupLabel: "Headcount Ratio (%)",
-                colorBreaks: [ // Higher = worse (red)
-                    { max: 20, color: "#41ab5d", label: "Very Low" },
-                    { max: 30, color: "#a1d99b", label: "Low" },
-                    { max: 40, color: "#ffffb2", label: "Moderate" },
-                    { max: 50, color: "#fd8d3c", label: "High" },
-                    { max: Infinity, color: "#f03b20", label: "Very High" }
+                colorBreaks: [ // Low (good) = light, Very High (bad) = dark red
+                    { max: 17.932, color: "#f7f7f7", label: "Very Low" },
+                    { max: 24.556, color: "#fcc5c0", label: "Low" },
+                    { max: 28.927, color: "#fa9fb5", label: "Moderate" },
+                    { max: 45.989, color: "#de77ae", label: "High" },
+                    { max: Infinity, color: "#c51b8a", label: "Very High" }
                 ],
-                ranges: ["< 20", "20 – 30", "30 – 40", "40 – 50", "≥ 50"]
+                ranges: ["2.671 – 17.932", "17.932 – 24.556", "24.556 – 28.927", "28.927 – 45.989", "45.989 – 81.336"]
             },
             "Intensity of depreviation.geojson": {
                 property: "Intensity",
+                countyProp: "adm1_name",
                 title: "Intensity of Deprivation (%)",
                 popupLabel: "Intensity (%)",
-                colorBreaks: [ // Higher = worse
-                    { max: 35, color: "#41ab5d", label: "Very Low" },
-                    { max: 40, color: "#a1d99b", label: "Low" },
-                    { max: 45, color: "#ffffb2", label: "Moderate" },
-                    { max: 50, color: "#fd8d3c", label: "High" },
-                    { max: Infinity, color: "#f03b20", label: "Very High" }
+                colorBreaks: [
+                    { max: 42.703, color: "#ffffff", label: "Very Low" },
+                    { max: 47.639, color: "#ffcccc", label: "Low" },
+                    { max: 52.575, color: "#ff9999", label: "Moderate" },
+                    { max: 57.512, color: "#ff6666", label: "High" },
+                    { max: Infinity, color: "#ff0000", label: "Very High" }
                 ],
-                ranges: ["< 35", "35 – 40", "40 – 45", "45 – 50", "≥ 50"]
+                ranges: ["37.767 – 42.703", "42.703 – 47.639", "47.639 – 52.575", "52.575 – 57.512", "57.512 – 62.448"]
             },
             "Multi dimensional poverty.geojson": {
                 property: "MPI",
+                countyProp: "adm1_name",
                 title: "Multidimensional Poverty Index (MPI)",
                 popupLabel: "MPI",
-                colorBreaks: [ // Higher = worse
-                    { max: 0.10, color: "#41ab5d", label: "Very Low" },
-                    { max: 0.15, color: "#a1d99b", label: "Low" },
-                    { max: 0.20, color: "#ffffb2", label: "Moderate" },
-                    { max: 0.25, color: "#fd8d3c", label: "High" },
-                    { max: Infinity, color: "#f03b20", label: "Very High" }
+                colorBreaks: [
+                    { max: 0.07238, color: "#ffffff", label: "Very Low" },
+                    { max: 0.09986, color: "#d9d9d9", label: "Low" },
+                    { max: 0.11938, color: "#bdbdbd", label: "Moderate" },
+                    { max: 0.20892, color: "#969696", label: "High" },
+                    { max: Infinity, color: "#636363", label: "Very High" }
                 ],
-                ranges: ["< 0.10", "0.10 – 0.15", "0.15 – 0.20", "0.20 – 0.25", "≥ 0.25"]
+                ranges: ["0.01030 – 0.07238", "0.07238 – 0.09986", "0.09986 – 0.11938", "0.11938 – 0.20892", "0.20892 – 0.49680"]
             },
             "Poverty Severity.geojson": {
-                property: "Severity",
-                title: "Poverty Severity Index",
-                popupLabel: "Severity",
-                colorBreaks: [ // Higher = worse
-                    { max: 0.05, color: "#41ab5d", label: "Very Low" },
-                    { max: 0.10, color: "#a1d99b", label: "Low" },
-                    { max: 0.15, color: "#ffffb2", label: "Moderate" },
-                    { max: 0.20, color: "#fd8d3c", label: "High" },
-                    { max: Infinity, color: "#f03b20", label: "Very High" }
+                property: "In Severe",
+                countyProp: "adm1_name",
+                title: "Poverty Severity (% in Severe Poverty)",
+                popupLabel: "Severity (%)",
+                colorBreaks: [
+                    { max: 1.939, color: "#ffffff", label: "Very Low" },
+                    { max: 3.732, color: "#ffcccc", label: "Low" },
+                    { max: 6.134, color: "#ff9999", label: "Moderate" },
+                    { max: 17.500, color: "#ff6666", label: "High" },
+                    { max: Infinity, color: "#cc0000", label: "Very High" }
                 ],
-                ranges: ["< 0.05", "0.05 – 0.10", "0.10 – 0.15", "0.15 – 0.20", "≥ 0.20"]
+                ranges: ["0.221 – 1.939", "1.939 – 3.732", "3.732 – 6.134", "6.134 – 17.500", "17.500 – 64.885"]
             },
             "Vulnerability.geojson": {
-                property: "Vulnerabl",
+                property: "Vulnerable",
+                countyProp: "adm1_name",
                 title: "Vulnerability to Poverty (%)",
                 popupLabel: "Vulnerability (%)",
-                colorBreaks: [ // Higher = worse
-                    { max: 10, color: "#41ab5d", label: "Very Low" },
-                    { max: 20, color: "#a1d99b", label: "Low" },
-                    { max: 30, color: "#ffffb2", label: "Moderate" },
-                    { max: 40, color: "#fd8d3c", label: "High" },
-                    { max: Infinity, color: "#f03b20", label: "Very High" }
+                colorBreaks: [
+                    { max: 18.111, color: "#ffffff", label: "Very Low" },
+                    { max: 24.922, color: "#ffcccc", label: "Low" },
+                    { max: 31.066, color: "#ff9999", label: "Moderate" },
+                    { max: 34.263, color: "#ff6666", label: "High" },
+                    { max: Infinity, color: "#ff0000", label: "Very High" }
                 ],
-                ranges: ["< 10", "10 – 20", "20 – 30", "30 – 40", "≥ 40"]
+                ranges: ["9.211 – 18.111", "18.111 – 24.922", "24.922 – 31.066", "31.066 – 34.263", "34.263 – 43.376"]
             }
         };
 
@@ -144,7 +150,10 @@
             if (currentLayer) map.removeLayer(currentLayer);
             if (legend) map.removeControl(legend);
 
-            fetch(file)
+            // Use raw GitHub URL so it works without local files
+            const rawUrl = "https://raw.githubusercontent.com/CrispusKipkorir/Mapping-Development-in-Kenya/main/" + file;
+
+            fetch(rawUrl)
                 .then(r => {
                     if (!r.ok) throw new Error('File not loaded');
                     return r.json();
@@ -160,8 +169,8 @@
                         }),
                         onEachFeature: (feature, layer) => {
                             const p = feature.properties;
-                            const county = p.County || p.NAME_1 || p.adm1_name || 'Unknown';
-                            const value = p[config.property] ? p[config.property].toFixed(3) : 'N/A';
+                            const county = p[config.countyProp] || p.Counties || 'Unknown';
+                            const value = p[config.property] !== undefined ? p[config.property].toFixed(3) : 'N/A';
                             const category = p[config.property] !== undefined ? getCategory(p[config.property], config.colorBreaks) : '';
                             layer.bindPopup(
                                 `<strong>${county.charAt(0).toUpperCase() + county.slice(1)} County</strong><br>` +
@@ -173,7 +182,7 @@
 
                     map.fitBounds(currentLayer.getBounds());
 
-                    // Legend
+                    // Legend matching your ArcGIS screenshots exactly
                     legend = L.control({ position: 'bottomright' });
                     legend.onAdd = () => {
                         const div = L.DomUtil.create('div', 'legend');
@@ -195,7 +204,7 @@
                     };
                     legend.addTo(map);
                 })
-                .catch(err => alert('Data load error: ' + err + '\nCheck console and file paths.'));
+                .catch(err => alert('Data load error: ' + err + '\nThe map now uses direct GitHub raw URLs, so it should work online.'));
         }
 
         updateMap();

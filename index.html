@@ -27,53 +27,111 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const map = L.map('map').setView([0.5, 37.8], 6);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+    const map = L.map('map').setView([0.5, 37.8], 6);
 
-        let currentLayer = null;
-        let legend = null;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
 
-        function getColor(v) {
-            return v > 0.7 ? '#006837' : v > 0.6 ? '#31a354' : v > 0.5 ? '#78c679' :
-                   v > 0.4 ? '#c2e699' : v > 0.3 ? '#ffffcc' : '#f03b20';
-        }
+    let currentLayer = null;
+    let legend = null;
 
-        function updateMap() {
-            const file = document.getElementById('indicator').value;
-            if (currentLayer) map.removeLayer(currentLayer);
-            if (legend) map.removeControl(legend);
+    // New color function matching your legend exactly
+    function getColor(hdi) {
+        if (hdi < 0.42000) return '#f03b20';      // Very Low  (red)
+        if (hdi < 0.47800) return '#fd8d3c';      // Low       (orange)
+        if (hdi < 0.53200) return '#fecc5c';      // Moderate  (light brown/yellow)
+        if (hdi < 0.58600) return '#ffffb2';      // High      (very light green/yellow)
+        return '#41ab5d';                         // Very High (dark green)
+    }
 
-            fetch(file)
-                .then(r => { if (!r.ok) throw Error('File not loaded'); return r.json(); })
-                .then(data => {
-                    currentLayer = L.geoJSON(data, {
-                        style: f => ({ fillColor: getColor(f.properties.HDI || 0), weight: 1.5, color: 'white', fillOpacity: 0.7 }),
-                        onEachFeature: (f, l) => {
-                            const p = f.properties;
-                            const county = p.adm1_name || p.NAME || p.County || 'Unknown';
-                            l.bindPopup(`<strong>${county.charAt(0).toUpperCase() + county.slice(1)} County</strong><br>HDI: ${p.HDI ? p.HDI.toFixed(3) : 'N/A'}`);
-                        }
-                    }).addTo(map);
-                    map.fitBounds(currentLayer.getBounds());
+    // Legend labels matching your image
+    function getCategory(hdi) {
+        if (hdi < 0.42000) return 'Very Low';
+        if (hdi < 0.47800) return 'Low';
+        if (hdi < 0.53200) return 'Moderate';
+        if (hdi < 0.58600) return 'High';
+        return 'Very High';
+    }
 
-                    legend = L.control({position: 'bottomright'});
-                    legend.onAdd = () => {
-                        const div = L.DomUtil.create('div', 'legend');
-                        const grades = [0, 0.3, 0.4, 0.5, 0.6, 0.7];
-                        div.innerHTML = '<strong>HDI Scale</strong><br>';
-                        grades.forEach(g => {
-                            div.innerHTML += `<i style="background:${getColor(g + 0.05)}"></i> ${g}${grades[grades.indexOf(g)+1] ? '&ndash;' + grades[grades.indexOf(g)+1] : '+'}<br>`;
-                        });
-                        return div;
-                    };
-                    legend.addTo(map);
-                })
-                .catch(err => alert('Data load error: ' + err + '\nCheck if GeoJSON file is complete and valid.'));
-        }
+    function updateMap() {
+        const file = document.getElementById('indicator').value;
 
-        updateMap();
-    </script>
-</body>
-</html>
+        if (currentLayer) map.removeLayer(currentLayer);
+        if (legend) map.removeControl(legend);
+
+        fetch(file)
+            .then(r => {
+                if (!r.ok) throw new Error('File not loaded');
+                return r.json();
+            })
+            .then(data => {
+                currentLayer = L.geoJSON(data, {
+                    style: feature => ({
+                        fillColor: getColor(feature.properties.HDI || 0),
+                        weight: 1.5,
+                        opacity: 1,
+                        color: 'white',
+                        fillOpacity: 0.7
+                    }),
+                    onEachFeature: (feature, layer) => {
+                        const p = feature.properties;
+                        const county = p.adm1_name || p.NAME || p.County || 'Unknown';
+                        const hdi = p.HDI ? p.HDI.toFixed(3) : 'N/A';
+                        const category = p.HDI ? getCategory(p.HDI) : '';
+                        layer.bindPopup(
+                            `<strong>${county.charAt(0).toUpperCase() + county.slice(1)} County</strong><br>` +
+                            `HDI: ${hdi}<br>` +
+                            `Category: ${category}`
+                        );
+                    }
+                }).addTo(map);
+
+                map.fitBounds(currentLayer.getBounds());
+
+                // Create legend matching your screenshot
+                legend = L.control({ position: 'bottomright' });
+
+                legend.onAdd = () => {
+                    const div = L.DomUtil.create('div', 'legend');
+                    div.style.background = 'white';
+                    div.style.padding = '10px';
+                    div.style.borderRadius = '5px';
+                    div.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
+                    div.style.lineHeight = '18px';
+                    div.style.color = '#555';
+
+                    const grades = [
+                        { max: 0.42000, label: 'Very Low', color: '#f03b20' },
+                        { max: 0.47800, label: 'Low', color: '#fd8d3c' },
+                        { max: 0.53200, label: 'Moderate', color: '#fecc5c' },
+                        { max: 0.58600, label: 'High', color: '#ffffb2' },
+                        { max: Infinity, label: 'Very High', color: '#41ab5d' }
+                    ];
+
+                    div.innerHTML = '<strong>Legend</strong><br>';
+
+                    grades.forEach(g => {
+                        let range;
+                        if (g.max === 0.42000) range = '0.37000 – 0.42000';
+                        else if (g.max === 0.47800) range = '0.42000 – 0.47800';
+                        else if (g.max === 0.53200) range = '0.47800 – 0.53200';
+                        else if (g.max === 0.58600) range = '0.53200 – 0.58600';
+                        else range = '0.58600 – 0.64000';
+
+                        div.innerHTML +=
+                            `<i style="background:${g.color}; width:18px; height:18px; float:left; margin-right:8px; opacity:0.7;"></i>` +
+                            `${range}<br><strong style="margin-left:26px;">${g.label}</strong><br><br>`;
+                    });
+
+                    return div;
+                };
+
+                legend.addTo(map);
+            })
+            .catch(err => alert('Data load error: ' + err + '\nCheck if GeoJSON file is complete and valid.'));
+    }
+
+    updateMap();
+</script>
+

@@ -10,7 +10,6 @@
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
         #map { height: 100vh; width: 100%; }
 
-        /* Title centered at top */
         .title {
             position: absolute;
             top: 10px;
@@ -26,7 +25,6 @@
             white-space: nowrap;
         }
 
-        /* Author */
         .author {
             position: absolute;
             bottom: 10px;
@@ -39,7 +37,6 @@
             font-size: 0.9em;
         }
 
-        /* Controls panel  */
         .control-panel {
             position: absolute;
             top: 60px;
@@ -65,7 +62,6 @@
         .collapsed .control-content { display: none; }
         .collapsed { width: 50px; }
 
-        /* Year slider */
         #year-slider { width: 100%; margin: 15px 0; }
         .slider-ticks {
             display: flex;
@@ -75,17 +71,18 @@
             color: #555;
         }
 
-        /* Legend panel - collapsed */
+        /* Legend moved to upper right */
         .legend-panel {
             position: absolute;
             top: 60px;
-            left: 10px;
+            right: 10px;
             background: white;
             border-radius: 8px;
             box-shadow: 0 0 15px rgba(0,0,0,0.3);
             z-index: 1000;
-            width: 300px;
-            margin-top: 10px;
+            width: 280px;
+            overflow: hidden;
+            transition: width 0.3s ease;
         }
         .legend-header {
             background: #f0f0f0;
@@ -97,19 +94,19 @@
             align-items: center;
         }
         .legend-content {
-            padding: 10px;
-            line-height: 22px;
-            color: #555;
+            padding: 12px;
+            line-height: 24px;
+            font-size: 0.95em;
         }
         .legend i {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             float: left;
-            margin-right: 8px;
-            opacity: 0.7;
+            margin-right: 10px;
+            opacity: 0.8;
+            border: 1px solid #ddd;
         }
 
-        /* Data sources - bottom right, collapsed */
         .sources-panel {
             position: absolute;
             bottom: 50px;
@@ -136,56 +133,80 @@
         }
         .sources-collapsed .sources-content { display: none; }
 
-        /* County comparison tool - bottom center */
+        /* County Comparison Tool - collapsible, bottom center */
         .comparison-panel {
             position: absolute;
             bottom: 50px;
             left: 50%;
             transform: translateX(-50%);
             background: white;
-            padding: 12px 20px;
             border-radius: 8px;
             box-shadow: 0 0 15px rgba(0,0,0,0.3);
             z-index: 1000;
-            text-align: center;
+            width: 420px;
+            overflow: hidden;
+            transition: height 0.3s ease;
+        }
+        .comparison-header {
+            background: #f0f0f0;
+            padding: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             font-size: 0.95em;
-            max-width: 500px;
+        }
+        .comparison-content {
+            padding: 12px;
+            font-size: 0.88em;
+            text-align: center;
         }
         #compare-btn {
-            padding: 8px 16px;
+            padding: 7px 14px;
             background: #0078e7;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            margin-top: 8px;
+            font-size: 0.9em;
         }
         #compare-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
         #clear-compare {
-            padding: 8px 16px;
+            padding: 7px 14px;
             background: #e74c3c;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            margin-left: 10px;
+            margin-left: 8px;
+            font-size: 0.9em;
             display: none;
         }
         #selected-counties {
-            margin-top: 8px;
+            margin: 10px 0;
             font-weight: bold;
             color: #333;
         }
+        #comparison-values {
+            margin-top: 8px;
+            padding: 8px;
+            background: #f8f8f8;
+            border-radius: 4px;
+            font-size: 0.92em;
+        }
 
         .hidden { display: none; }
+        .comparison-collapsed .comparison-content { display: none; }
+        .comparison-collapsed { height: 42px; }
     </style>
 </head>
 <body>
     <div class="title">Mapping Development in Kenya</div>
-    <div class="author">Crispus Kipkorir</div>
+    <div class="author"> Author:Crispus Kipkorir</div>
 
     <!-- Controls Panel -->
     <div class="control-panel" id="controlPanel">
@@ -223,11 +244,11 @@
         </div>
     </div>
 
-    <!-- Legend Panel -->
+    <!-- Legend Panel - Upper Right -->
     <div class="legend-panel hidden" id="legendPanel">
         <div class="legend-header" onclick="togglePanel('legendPanel')">
             <span>Legend</span>
-            <i class="fas fa-chevron-down" id="legendIcon"></i>
+            <i class="fas fa-chevron-up"></i>
         </div>
         <div class="legend-content" id="legendContent"></div>
     </div>
@@ -250,12 +271,19 @@
         </div>
     </div>
 
-    <!-- County Comparison Tool -->
-    <div class="comparison-panel">
-        <div>Click counties on the map to select up to two for comparison (only available in 2025 view).</div>
-        <button id="compare-btn" disabled>Start Side-by-Side Comparison</button>
-        <button id="clear-compare">Clear Selection</button>
-        <div id="selected-counties">No counties selected</div>
+    <!-- County Comparison Tool - Collapsible -->
+    <div class="comparison-panel" id="comparisonPanel">
+        <div class="comparison-header" onclick="togglePanel('comparisonPanel')">
+            <span>County Comparison Tool</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="comparison-content">
+            <div>Click up to two counties on the map (2025 view only) to compare.</div>
+            <button id="compare-btn" disabled>Start Side-by-Side View</button>
+            <button id="clear-compare">Clear</button>
+            <div id="selected-counties">No counties selected</div>
+            <div id="comparison-values"></div>
+        </div>
     </div>
 
     <div id="map"></div>
@@ -273,47 +301,15 @@
         let sideBySideControl = null;
         let selectedFeatures = [];
 
-        // National values (updated with latest available data as of 2026)
         const nationalData = {
-            "Human Development Index.geojson": { 
-                2015: "0.555", 
-                2020: "~0.575", 
-                2025: "0.628 (2023)", 
-                2030: "Projected ~0.70" 
-            },
-            "HeadCount Ratio.geojson": { 
-                2015: "36.1% (2015/16)", 
-                2020: "~42% (COVID peak)", 
-                2025: "39.8% (2022)", 
-                2030: "Target <30%" 
-            },
-            "Intensity of depreviation.geojson": { 
-                2015: "~45%", 
-                2020: "~48%", 
-                2025: "~50%", 
-                2030: "Target reduction" 
-            },
-            "Multi dimensional poverty.geojson": { 
-                2015: "~0.20", 
-                2020: "~0.18", 
-                2025: "0.113 (2022)", 
-                2030: "Target <0.10" 
-            },
-            "Poverty Severity.geojson": { 
-                2015: "~10%", 
-                2020: "~15%", 
-                2025: "~12%", 
-                2030: "Target low" 
-            },
-            "Vulnerability.geojson": { 
-                2015: "~25%", 
-                2020: "~30%", 
-                2025: "~28%", 
-                2030: "Target <20%" 
-            }
+            "Human Development Index.geojson": { 2015: "0.555", 2020: "~0.575", 2025: "0.628 (2023)", 2030: "Projected ~0.70" },
+            "HeadCount Ratio.geojson": { 2015: "36.1% (2015/16)", 2020: "~42% (COVID peak)", 2025: "39.8% (2022)", 2030: "Target <30%" },
+            "Intensity of depreviation.geojson": { 2015: "~45%", 2020: "~48%", 2025: "~50%", 2030: "Target reduction" },
+            "Multi dimensional poverty.geojson": { 2015: "~0.20", 2020: "~0.18", 2025: "0.113 (2022)", 2030: "Target <0.10" },
+            "Poverty Severity.geojson": { 2015: "~10%", 2020: "~15%", 2025: "~12%", 2030: "Target low" },
+            "Vulnerability.geojson": { 2015: "~25%", 2020: "~30%", 2025: "~28%", 2030: "Target <20%" }
         };
 
-        // Full indicator configurations
         const indicators = {
             "Human Development Index.geojson": {
                 property: "HDI",
@@ -419,26 +415,41 @@
             const panel = document.getElementById(panelId);
             panel.classList.toggle('collapsed');
             if (panelId === 'sourcesPanel') panel.classList.toggle('sources-collapsed');
+            if (panelId === 'comparisonPanel') panel.classList.toggle('comparison-collapsed');
         }
 
         function updateComparisonUI() {
+            const config = indicators[document.getElementById('indicator').value];
             const btn = document.getElementById('compare-btn');
             const clearBtn = document.getElementById('clear-compare');
             const label = document.getElementById('selected-counties');
+            const valuesDiv = document.getElementById('comparison-values');
 
             if (selectedFeatures.length === 0) {
                 label.textContent = 'No counties selected';
+                valuesDiv.innerHTML = '';
                 btn.disabled = true;
                 clearBtn.style.display = 'none';
             } else if (selectedFeatures.length === 1) {
-                const county = selectedFeatures[0].properties[indicators[document.getElementById('indicator').value].countyProp];
+                const county = selectedFeatures[0].properties[config.countyProp];
+                const val = selectedFeatures[0].properties[config.property]?.toFixed(3) || 'N/A';
+                const cat = getCategory(selectedFeatures[0].properties[config.property], config.colorBreaks);
                 label.textContent = `Selected: ${county}`;
+                valuesDiv.innerHTML = `<strong>${county}</strong><br>${config.popupLabel}: ${val}<br>Category: ${cat}`;
                 btn.disabled = true;
                 clearBtn.style.display = 'inline-block';
             } else {
-                const c1 = selectedFeatures[0].properties[indicators[document.getElementById('indicator').value].countyProp];
-                const c2 = selectedFeatures[1].properties[indicators[document.getElementById('indicator').value].countyProp];
+                const c1 = selectedFeatures[0].properties[config.countyProp];
+                const c2 = selectedFeatures[1].properties[config.countyProp];
+                const v1 = selectedFeatures[0].properties[config.property]?.toFixed(3) || 'N/A';
+                const v2 = selectedFeatures[1].properties[config.property]?.toFixed(3) || 'N/A';
+                const cat1 = getCategory(selectedFeatures[0].properties[config.property], config.colorBreaks);
+                const cat2 = getCategory(selectedFeatures[1].properties[config.property], config.colorBreaks);
                 label.textContent = `Selected: ${c1} vs ${c2}`;
+                valuesDiv.innerHTML = `
+                    <strong>${c1}</strong>: ${config.popupLabel} ${v1} (${cat1})<br>
+                    <strong>${c2}</strong>: ${config.popupLabel} ${v2} (${cat2})
+                `;
                 btn.disabled = false;
                 clearBtn.style.display = 'inline-block';
             }
@@ -450,7 +461,7 @@
                 map.removeControl(sideBySideControl);
                 sideBySideControl = null;
             }
-            if (currentLayer) currentLayer.eachLayer(l => l.setStyle({weight: 1.5, color: 'white'}));
+            if (currentLayer) currentLayer.eachLayer(l => l.setStyle({weight: 1.5, color: 'white', fillOpacity: 0.7}));
             updateComparisonUI();
         }
 
@@ -459,8 +470,8 @@
         document.getElementById('compare-btn').onclick = () => {
             if (selectedFeatures.length !== 2) return;
             const config = indicators[document.getElementById('indicator').value];
-            const layer1 = L.geoJSON(selectedFeatures[0], {style: {fillColor: getColor(selectedFeatures[0].properties[config.property], config.colorBreaks), weight: 3, color: '#000', fillOpacity: 0.8}});
-            const layer2 = L.geoJSON(selectedFeatures[1], {style: {fillColor: getColor(selectedFeatures[1].properties[config.property], config.colorBreaks), weight: 3, color: '#000', fillOpacity: 0.8}});
+            const layer1 = L.geoJSON(selectedFeatures[0], {style: {fillColor: getColor(selectedFeatures[0].properties[config.property], config.colorBreaks), weight: 4, color: '#000', fillOpacity: 0.8}});
+            const layer2 = L.geoJSON(selectedFeatures[1], {style: {fillColor: getColor(selectedFeatures[1].properties[config.property], config.colorBreaks), weight: 4, color: '#000', fillOpacity: 0.8}});
             if (sideBySideControl) map.removeControl(sideBySideControl);
             sideBySideControl = L.control.sideBySide(layer1, layer2).addTo(map);
         };
@@ -484,7 +495,7 @@
             if (year === 2025) {
                 const rawUrl = "https://raw.githubusercontent.com/CrispusKipkorir/Mapping-Development-in-Kenya/main/" + encodeURIComponent(file);
                 fetch(rawUrl)
-                    .then(r => { if (!r.ok) throw new Error('File not found'); return r.json(); })
+                    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
                     .then(data => {
                         currentLayer = L.geoJSON(data, {
                             style: feature => ({
@@ -504,10 +515,10 @@
                                 layer.on('click', () => {
                                     if (selectedFeatures.includes(feature)) {
                                         selectedFeatures = selectedFeatures.filter(f => f !== feature);
-                                        layer.setStyle({weight: 1.5, color: 'white'});
+                                        layer.setStyle({weight: 1.5, color: 'white', fillOpacity: 0.7});
                                     } else {
                                         if (selectedFeatures.length >= 2) {
-                                            alert('Maximum 2 counties. Click "Clear Selection" first.');
+                                            alert('Maximum 2 counties. Click "Clear" first.');
                                             return;
                                         }
                                         selectedFeatures.push(feature);
@@ -520,15 +531,16 @@
 
                         map.fitBounds(currentLayer.getBounds());
 
-                        // Show legend
+                        // Show legend with proper colors
                         document.getElementById('legendPanel').classList.remove('hidden');
                         const content = document.getElementById('legendContent');
                         content.innerHTML = `<strong>${config.title}</strong><br><br>`;
                         config.colorBreaks.forEach((b, i) => {
-                            content.innerHTML += `<i style="background:${b.color}"></i>${config.ranges[i]}<br><strong style="margin-left:26px;">${b.label}</strong><br><br>`;
+                            content.innerHTML += 
+                                `<i style="background:${b.color}"></i> ${config.ranges[i]}<br><strong style="margin-left:30px;">${b.label}</strong><br><br>`;
                         });
                     })
-                    .catch(err => alert('Error loading data: ' + err));
+                    .catch(err => alert('Error loading data'));
             } else {
                 messageOverlay = L.rectangle(map.getBounds(), {color: "#fff", weight: 0, fillOpacity: 0.85}).addTo(map);
                 currentLayer = messageOverlay;
@@ -544,7 +556,6 @@
             }
         }
 
-        // Initial load
         updateMap();
     </script>
 </body>

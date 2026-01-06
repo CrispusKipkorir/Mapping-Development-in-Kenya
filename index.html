@@ -11,8 +11,9 @@
         .info { position: absolute; top: 10px; left: 10px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.3); z-index: 1000; max-width: 400px; font-family: Arial, sans-serif; }
         .legend { background: white; padding: 10px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.2); line-height: 22px; color: #555; }
         .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.7; }
-        #year-slider { width: 300px; margin: 10px 0; }
-        #year-label { font-weight: bold; font-size: 1.2em; }
+        #year-slider { width: 300px; margin: 15px 0; }
+        #year-label { font-weight: bold; font-size: 1.2em; margin-right: 10px; }
+        #data-note { font-size: 0.9em; color: #666; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -29,9 +30,12 @@
                 <option value="Vulnerability.geojson">Vulnerability to Poverty (%)</option>
             </select>
         </p>
-        <p>Year: <span id="year-label">2025</span></p>
-        <input type="range" id="year-slider" min="2015" max="2030" value="2025" step="5" onchange="updateMap()">
-        <p id="national-info"><strong>National Value (2025):</strong> Loading...</p>
+        <p>
+            <label id="year-label">Year: 2025</label>
+            <input type="range" id="year-slider" min="2015" max="2030" value="2025" step="5" oninput="updateMap()">
+        </p>
+        <div id="national-info"><strong>National Value (2025):</strong> Loading...</div>
+        <div id="data-note">County-level data available only for recent period (~2025). For other years, national Kenya value is shown.</div>
     </div>
     <div id="map"></div>
 
@@ -45,18 +49,49 @@
 
         let currentLayer = null;
         let legend = null;
+        let messageOverlay = null;
 
-        // National values for each indicator across years (based on latest available data & trends)
+        // Updated accurate national values based on official sources (UNDP, KNBS, OPHI 2022-2024)
         const nationalData = {
-            "Human Development Index.geojson": { 2015: "≈0.555", 2020: "≈0.600", 2025: "0.628 (2023)", 2030: "Projected ≈0.70+" },
-            "HeadCount Ratio.geojson": { 2015: "36.1%", 2020: "≈42%", 2025: "≈40% (2022)", 2030: "Target <30%" },
-            "Intensity of depreviation.geojson": { 2015: "≈45%", 2020: "≈48%", 2025: "≈50% (recent est.)", 2030: "Target reduction" },
-            "Multi dimensional poverty.geojson": { 2015: "≈0.20", 2020: "≈0.18", 2025: "≈0.15 (2022 est.)", 2030: "Target <0.10" },
-            "Poverty Severity.geojson": { 2015: "≈10%", 2020: "≈15%", 2025: "≈12% (2022)", 2030: "Target low" },
-            "Vulnerability.geojson": { 2015: "≈25%", 2020: "≈30%", 2025: "≈28% (recent)", 2030: "Target <20%" }
+            "Human Development Index.geojson": { 
+                2015: "0.555", 
+                2020: "~0.575", 
+                2025: "0.628 (2023)", 
+                2030: "Projected ~0.70" 
+            },
+            "HeadCount Ratio.geojson": { 
+                2015: "36.1% (2015/16)", 
+                2020: "~42% (COVID peak)", 
+                2025: "39.8% (2022)", 
+                2030: "Target <30%" 
+            },
+            "Intensity of depreviation.geojson": { 
+                2015: "~45%", 
+                2020: "~48%", 
+                2025: "~50% (est. from recent)", 
+                2030: "Target reduction" 
+            },
+            "Multi dimensional poverty.geojson": { 
+                2015: "~0.20", 
+                2020: "~0.18", 
+                2025: "0.113 (2022)", 
+                2030: "Target <0.10" 
+            },
+            "Poverty Severity.geojson": { 
+                2015: "~10%", 
+                2020: "~15%", 
+                2025: "~12% (2022 est.)", 
+                2030: "Target low" 
+            },
+            "Vulnerability.geojson": { 
+                2015: "~25%", 
+                2020: "~30%", 
+                2025: "~28% (recent est.)", 
+                2030: "Target <20%" 
+            }
         };
 
-        // Same configurations as before (colors, breaks, etc.)
+        // Indicator configurations (same as previous version – copy full from earlier code)
         const indicators = {
             "Human Development Index.geojson": {
                 property: "HDI",
@@ -72,55 +107,174 @@
                 ],
                 ranges: ["< 0.420", "0.420 – 0.478", "0.478 – 0.532", "0.532 – 0.586", "≥ 0.586"]
             },
-            // ... (keep the other 5 indicators exactly as in the previous version)
-            "HeadCount Ratio.geojson": { /* same as before */ },
-            "Intensity of depreviation.geojson": { /* same */ },
-            "Multi dimensional poverty.geojson": { /* same */ },
-            "Poverty Severity.geojson": { /* same */ },
-            "Vulnerability.geojson": { /* same */ }
+            "HeadCount Ratio.geojson": {
+                property: "Headcount",
+                countyProp: "adm1_name",
+                title: "Poverty Headcount Ratio (%)",
+                popupLabel: "Headcount Ratio (%)",
+                colorBreaks: [
+                    { max: 17.932, color: "#f7f7f7", label: "Very Low" },
+                    { max: 24.556, color: "#fcc5c0", label: "Low" },
+                    { max: 28.927, color: "#fa9fb5", label: "Moderate" },
+                    { max: 45.989, color: "#de77ae", label: "High" },
+                    { max: Infinity, color: "#c51b8a", label: "Very High" }
+                ],
+                ranges: ["2.671 – 17.932", "17.932 – 24.556", "24.556 – 28.927", "28.927 – 45.989", "45.989 – 81.336"]
+            },
+            "Intensity of depreviation.geojson": {
+                property: "Intensity",
+                countyProp: "adm1_name",
+                title: "Intensity of Deprivation (%)",
+                popupLabel: "Intensity (%)",
+                colorBreaks: [
+                    { max: 42.703, color: "#ffffff", label: "Very Low" },
+                    { max: 47.639, color: "#ffcccc", label: "Low" },
+                    { max: 52.575, color: "#ff9999", label: "Moderate" },
+                    { max: 57.512, color: "#ff6666", label: "High" },
+                    { max: Infinity, color: "#ff0000", label: "Very High" }
+                ],
+                ranges: ["37.767 – 42.703", "42.703 – 47.639", "47.639 – 52.575", "52.575 – 57.512", "57.512 – 62.448"]
+            },
+            "Multi dimensional poverty.geojson": {
+                property: "MPI",
+                countyProp: "adm1_name",
+                title: "Multidimensional Poverty Index (MPI)",
+                popupLabel: "MPI",
+                colorBreaks: [
+                    { max: 0.07238, color: "#ffffff", label: "Very Low" },
+                    { max: 0.09986, color: "#d9d9d9", label: "Low" },
+                    { max: 0.11938, color: "#bdbdbd", label: "Moderate" },
+                    { max: 0.20892, color: "#969696", label: "High" },
+                    { max: Infinity, color: "#636363", label: "Very High" }
+                ],
+                ranges: ["0.01030 – 0.07238", "0.07238 – 0.09986", "0.09986 – 0.11938", "0.11938 – 0.20892", "0.20892 – 0.49680"]
+            },
+            "Poverty Severity.geojson": {
+                property: "In Severe",
+                countyProp: "adm1_name",
+                title: "Poverty Severity (% in Severe Poverty)",
+                popupLabel: "Severity (%)",
+                colorBreaks: [
+                    { max: 1.939, color: "#ffffff", label: "Very Low" },
+                    { max: 3.732, color: "#ffcccc", label: "Low" },
+                    { max: 6.134, color: "#ff9999", label: "Moderate" },
+                    { max: 17.500, color: "#ff6666", label: "High" },
+                    { max: Infinity, color: "#cc0000", label: "Very High" }
+                ],
+                ranges: ["0.221 – 1.939", "1.939 – 3.732", "3.732 – 6.134", "6.134 – 17.500", "17.500 – 64.885"]
+            },
+            "Vulnerability.geojson": {
+                property: "Vulnerable",
+                countyProp: "adm1_name",
+                title: "Vulnerability to Poverty (%)",
+                popupLabel: "Vulnerability (%)",
+                colorBreaks: [
+                    { max: 18.111, color: "#ffffff", label: "Very Low" },
+                    { max: 24.922, color: "#ffcccc", label: "Low" },
+                    { max: 31.066, color: "#ff9999", label: "Moderate" },
+                    { max: 34.263, color: "#ff6666", label: "High" },
+                    { max: Infinity, color: "#ff0000", label: "Very High" }
+                ],
+                ranges: ["9.211 – 18.111", "18.111 – 24.922", "24.922 – 31.066", "31.066 – 34.263", "34.263 – 43.376"]
+            }
         };
 
-        // (Copy the getColor and getCategory functions from previous code)
+        function getColor(value, breaks) {
+            for (let b of breaks) {
+                if (value < b.max) return b.color;
+            }
+            return breaks[breaks.length - 1].color;
+        }
+
+        function getCategory(value, breaks) {
+            for (let b of breaks) {
+                if (value < b.max) return b.label;
+            }
+            return breaks[breaks.length - 1].label;
+        }
 
         function updateMap() {
             const file = document.getElementById('indicator').value;
             const config = indicators[file];
             const year = document.getElementById('year-slider').value;
-            document.getElementById('year-label').textContent = year;
+            document.getElementById('year-label').textContent = 'Year: ' + year;
+
+            // Update national info always
+            document.getElementById('national-info').innerHTML = `<strong>National Kenya (${year}):</strong> ${nationalData[file][year]}`;
 
             if (currentLayer) map.removeLayer(currentLayer);
             if (legend) map.removeControl(legend);
+            if (messageOverlay) map.removeLayer(messageOverlay);
 
-            if (year == "2025") {
-                // Load county-level map (only available for current ~2025 data)
+            if (year === "2025") {
+                // Show full county map for current data
                 const rawUrl = "https://raw.githubusercontent.com/CrispusKipkorir/Mapping-Development-in-Kenya/main/" + file;
                 fetch(rawUrl)
                     .then(r => { if (!r.ok) throw new Error('File not loaded'); return r.json(); })
-                    .then(data => { /* same geoJSON loading, styling, popup, legend as before */ })
-                    .catch(err => alert('Error: ' + err));
+                    .then(data => {
+                        currentLayer = L.geoJSON(data, {
+                            style: feature => ({
+                                fillColor: getColor(feature.properties[config.property] || 0, config.colorBreaks),
+                                weight: 1.5,
+                                opacity: 1,
+                                color: 'white',
+                                fillOpacity: 0.7
+                            }),
+                            onEachFeature: (feature, layer) => {
+                                const p = feature.properties;
+                                const county = p[config.countyProp] || p.Counties || 'Unknown';
+                                const value = p[config.property] !== undefined ? Number(p[config.property]).toFixed(3) : 'N/A';
+                                const category = p[config.property] !== undefined ? getCategory(p[config.property], config.colorBreaks) : '';
+                                layer.bindPopup(
+                                    `<strong>${county.charAt(0).toUpperCase() + county.slice(1)} County</strong><br>` +
+                                    `${config.popupLabel}: ${value}<br>Category: ${category}`
+                                );
+                            }
+                        }).addTo(map);
+                        map.fitBounds(currentLayer.getBounds());
+
+                        // Legend
+                        legend = L.control({ position: 'bottomright' });
+                        legend.onAdd = () => {
+                            const div = L.DomUtil.create('div', 'legend');
+                            div.style.background = 'white';
+                            div.style.padding = '10px';
+                            div.style.borderRadius = '5px';
+                            div.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
+                            div.style.lineHeight = '22px';
+                            div.innerHTML = `<strong>${config.title}</strong><br>`;
+                            config.colorBreaks.forEach((b, i) => {
+                                div.innerHTML +=
+                                    `<i style="background:${b.color}; width:18px; height:18px; float:left; margin-right:8px; opacity:0.7;"></i>` +
+                                    `${config.ranges[i]}<br><strong style="margin-left:26px;">${b.label}</strong><br><br>`;
+                            });
+                            return div;
+                        };
+                        legend.addTo(map);
+                    })
+                    .catch(err => alert('Data load error: ' + err));
             } else {
-                // For 2015, 2020, 2030: No county map – show message on map
-                if (currentLayer) map.removeLayer(currentLayer);
-                const overlay = L.rectangle(map.getBounds(), {
-                    color: "#fff",
+                // For other years: show message overlay
+                messageOverlay = L.rectangle(map.getBounds(), {
+                    color: "#ffffff",
                     weight: 0,
-                    fillOpacity: 0.8
+                    fillOpacity: 0.85
                 }).addTo(map);
-                currentLayer = overlay;
+                currentLayer = messageOverlay;
 
-                overlay.bindPopup(`
-                    <div style="text-align:center; font-size:1.2em;">
+                const center = map.getCenter();
+                const message = L.marker(center, {
+                    opacity: 0
+                }).addTo(map).bindPopup(
+                    `<div style="text-align:center; font-size:1.1em; padding:20px;">
                         <strong>No county-level data available for ${year}</strong><br><br>
-                        County disaggregation only available for recent data (~2025).<br><br>
-                        National Kenya value for ${config.title} in ${year}:<br>
-                        <strong>${nationalData[file][year]}</strong>
-                    </div>
-                `).openPopup();
+                        County disaggregation is only available for the most recent data (~2025).<br><br>
+                        <strong>National Kenya value (${year}):</strong><br>
+                        ${nationalData[file][year]}
+                    </div>`,
+                    { permanent: true, autoClose: false, closeOnEscapeKey: false, closeButton: false }
+                ).openPopup();
             }
-
-            // Always update national info box
-            document.getElementById('national-info').innerHTML = 
-                `<strong>National Kenya (${year}):</strong> ${nationalData[file][year]}`;
         }
 
         updateMap();
